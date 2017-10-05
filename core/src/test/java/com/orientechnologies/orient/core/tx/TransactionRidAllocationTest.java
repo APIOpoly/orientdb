@@ -121,12 +121,12 @@ public class TransactionRidAllocationTest {
     OVertex v = db.newVertex("V");
     db.save(v);
 
-    ((OAbstractPaginatedStorage) db.getStorage()).preallocateRids(db.getTransaction());
+    ((OAbstractPaginatedStorage) db.getStorage()).preallocateRids((OTransactionOptimistic) db.getTransaction());
     OTransaction transaction = db.getTransaction();
     second.activateOnCurrentThread();
     second.begin();
     OTransactionOptimistic transactionOptimistic = (OTransactionOptimistic) second.getTransaction();
-    for (ORecordOperation operation : transaction.getAllRecordEntries()) {
+    for (ORecordOperation operation : transaction.getRecordOperations()) {
       transactionOptimistic.addRecord(operation.getRecord().copy(), operation.getType(), null);
     }
     ((OAbstractPaginatedStorage) second.getStorage()).preallocateRids(transactionOptimistic);
