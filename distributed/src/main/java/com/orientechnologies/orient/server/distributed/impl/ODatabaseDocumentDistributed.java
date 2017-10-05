@@ -509,7 +509,7 @@ public class ODatabaseDocumentDistributed extends ODatabaseDocumentEmbedded {
   public void internalCommit(OTransactionOptimistic iTx) {
     //This is future may handle a retry
     try {
-      for (ORecordOperation txEntry : iTx.getAllRecordEntries()) {
+      for (ORecordOperation txEntry : iTx.getRecordOperations()) {
         if (txEntry.type == ORecordOperation.CREATED || txEntry.type == ORecordOperation.UPDATED) {
           final ORecord record = txEntry.getRecord();
           if (record instanceof ODocument)
@@ -543,14 +543,14 @@ public class ODatabaseDocumentDistributed extends ODatabaseDocumentEmbedded {
   public void acquireLocksForTx(OTransactionRealAbstract tx, ODistributedTxContext txContext) {
     //Sort and lock transaction entry in distributed environment
     Set<ORID> rids = new TreeSet<>();
-    for (ORecordOperation entry : tx.getAllRecordEntries()) {
+    for (ORecordOperation entry : tx.getRecordOperations()) {
       rids.add(entry.getRID());
     }
     for (ORID rid : rids) {
       txContext.lock(rid);
     }
     Set<Object> keys = new TreeSet<>();
-    for (Map.Entry<String, OTransactionIndexChanges> change : tx.getIndexEntries().entrySet()) {
+    for (Map.Entry<String, OTransactionIndexChanges> change : tx.getIndexOperations().entrySet()) {
       OIndex<?> index = getMetadata().getIndexManager().getIndex(change.getKey());
       if (OClass.INDEX_TYPE.UNIQUE.name().equals(index.getType()) || OClass.INDEX_TYPE.UNIQUE_HASH_INDEX.name()
           .equals(index.getType()) || OClass.INDEX_TYPE.DICTIONARY.name().equals(index.getType())
@@ -572,7 +572,7 @@ public class ODatabaseDocumentDistributed extends ODatabaseDocumentEmbedded {
     try {
       acquireLocksForTx(tx, txContext);
 
-      for (Map.Entry<String, OTransactionIndexChanges> change : tx.getIndexEntries().entrySet()) {
+      for (Map.Entry<String, OTransactionIndexChanges> change : tx.getIndexOperations().entrySet()) {
         OIndex<?> index = getMetadata().getIndexManager().getIndex(change.getKey());
         if (OClass.INDEX_TYPE.UNIQUE.name().equals(index.getType()) || OClass.INDEX_TYPE.UNIQUE_HASH_INDEX.name()
             .equals(index.getType())) {
@@ -588,7 +588,7 @@ public class ODatabaseDocumentDistributed extends ODatabaseDocumentEmbedded {
         }
       }
 
-      for (ORecordOperation entry : tx.getAllRecordEntries()) {
+      for (ORecordOperation entry : tx.getRecordOperations()) {
         if (entry.getType() != ORecordOperation.CREATED) {
           int changeVersion = entry.getRecord().getVersion();
           int persistentVersion = getStorage().getRecordMetadata(entry.getRID()).getVersion();
@@ -615,7 +615,7 @@ public class ODatabaseDocumentDistributed extends ODatabaseDocumentEmbedded {
     ODistributedDatabase localDistributedDatabase = getStorageDistributed().getLocalDistributedDatabase();
     ODistributedTxContext txContext = localDistributedDatabase.popTxContext(transactionId);
     try {
-      ((OAbstractPaginatedStorage) getStorage().getUnderlying()).commitPreAllocated(getTransaction());
+      ((OAbstractPaginatedStorage) getStorage().getUnderlying()).commitPreAllocated((OTransactionInternal) getTransaction());
     } finally {
       txContext.destroy();
     }
