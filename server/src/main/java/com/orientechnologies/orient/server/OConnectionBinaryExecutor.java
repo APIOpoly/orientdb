@@ -53,7 +53,6 @@ import com.orientechnologies.orient.core.record.impl.ODocumentInternal;
 import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializer;
 import com.orientechnologies.orient.core.serialization.serializer.record.ORecordSerializerFactory;
 import com.orientechnologies.orient.core.serialization.serializer.record.binary.ORecordSerializerNetworkV37;
-import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultInternal;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.sql.parser.OLocalResultSetLifecycleDecorator;
@@ -1278,7 +1277,7 @@ public final class OConnectionBinaryExecutor implements OBinaryRequestExecutor {
     if (!database.getTransaction().isActive())
       throw new ODatabaseException("No Transaction Active");
     OTransactionOptimistic tx = (OTransactionOptimistic) database.getTransaction();
-    return new OFetchTransactionResponse(tx.getId(), tx.getAllRecordEntries(), tx.getIndexEntries(), tx.getUpdatedRids());
+    return new OFetchTransactionResponse(tx.getId(), tx.getRecordOperations(), tx.getIndexOperations(), tx.getUpdatedRids());
   }
 
   @Override

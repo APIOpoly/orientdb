@@ -80,10 +80,7 @@ import com.orientechnologies.orient.core.storage.impl.local.paginated.base.ODura
 import com.orientechnologies.orient.core.storage.impl.local.paginated.wal.*;
 import com.orientechnologies.orient.core.storage.impl.local.statistic.OPerformanceStatisticManager;
 import com.orientechnologies.orient.core.storage.impl.local.statistic.OSessionStoragePerformanceStatistic;
-import com.orientechnologies.orient.core.tx.OTransaction;
-import com.orientechnologies.orient.core.tx.OTransactionAbstract;
-import com.orientechnologies.orient.core.tx.OTransactionIndexChanges;
-import com.orientechnologies.orient.core.tx.OTransactionOptimistic;
+import com.orientechnologies.orient.core.tx.*;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.*;
@@ -1472,7 +1469,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
       checkLowDiskSpaceRequestsAndBackgroundDataFlushExceptionsAndBrokenPages();
 
       @SuppressWarnings("unchecked")
-      final Iterable<ORecordOperation> entries = (Iterable<ORecordOperation>) clientTx.getAllRecordEntries();
+      final Iterable<ORecordOperation> entries = (Iterable<ORecordOperation>) clientTx.getRecordOperations();
       final TreeMap<Integer, OCluster> clustersToLock = new TreeMap<>();
 
       final Set<ORecordOperation> newRecords = new TreeSet<>(COMMIT_RECORD_OPERATION_COMPARATOR);
@@ -1547,7 +1544,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
    * @return The list of operations applied by the transaction
    */
   @Override
-  public List<ORecordOperation> commit(final OTransaction clientTx, Runnable callback) {
+  public List<ORecordOperation> commit(final OTransactionInternal clientTx, Runnable callback) {
     return commit(clientTx, false);
   }
 
@@ -1559,7 +1556,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
    * @return The list of operations applied by the transaction
    */
   @SuppressWarnings("UnusedReturnValue")
-  public List<ORecordOperation> commitPreAllocated(final OTransaction clientTx) {
+  public List<ORecordOperation> commitPreAllocated(final OTransactionInternal clientTx) {
     return commit(clientTx, true);
   }
 
@@ -1580,7 +1577,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
    *
    * @return The list of operations applied by the transaction
    */
-  private List<ORecordOperation> commit(final OTransaction clientTx, boolean allocated) {
+  private List<ORecordOperation> commit(final OTransactionInternal clientTx, boolean allocated) {
     // XXX: At this moment, there are two implementations of the commit method. One for regular client transactions and one for
     // implicit micro-transactions. The implementations are quite identical, but operate on slightly different data. If you change
     // this method don't forget to change its counterpart:
@@ -1600,7 +1597,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
       databaseRecord.getMetadata().makeThreadLocalSchemaSnapshot();
 
       @SuppressWarnings("unchecked")
-      final Iterable<ORecordOperation> entries = (Iterable<ORecordOperation>) clientTx.getAllRecordEntries();
+      final Iterable<ORecordOperation> entries = (Iterable<ORecordOperation>) clientTx.getRecordOperations();
       final TreeMap<Integer, OCluster> clustersToLock = new TreeMap<>();
       final Map<ORecordOperation, Integer> clusterOverrides = new IdentityHashMap<>();
 
@@ -1722,7 +1719,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
                 });
             }
 
-            OTransactionAbstract.updateCacheFromEntries(clientTx, entries, true);
+            OTransactionAbstract.updateCacheFromEntries(clientTx.getDatabase(), entries, true);
 
             txCommit.incrementAndGet();
 
@@ -1857,7 +1854,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
 
                 rid.setClusterPosition(physicalPosition.clusterPosition);
 
-                microTransaction.updateIdentityAfterRecordCommit(oldRID, rid);
+                microTransaction.updateIdentityAfterCommit(oldRID, rid);
               }
             }
 
@@ -1872,7 +1869,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
 
             endStorageTx();
 
-            microTransaction.updateRecordCacheAfterCommit();
+            OTransactionAbstract.updateCacheFromEntries(microTransaction.getDatabase(), microTransaction.getRecordOperations(), true);
 
             txCommit.incrementAndGet();
 
@@ -1931,13 +1928,8 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
     }
   }
 
-  private TreeMap<String, OTransactionIndexChanges> getSortedIndexOperations(OTransaction clientTx) {
-    assert clientTx instanceof OTransactionOptimistic;
-    return new TreeMap<>(((OTransactionOptimistic) clientTx).getIndexEntries());
-  }
-
-  private TreeMap<String, OTransactionIndexChanges> getSortedIndexOperations(OMicroTransaction microTransaction) {
-    return new TreeMap<>(microTransaction.getIndexOperations());
+  private TreeMap<String, OTransactionIndexChanges> getSortedIndexOperations(OTransactionInternal clientTx) {
+    return new TreeMap<>(clientTx.getIndexOperations());
   }
 
   public int loadIndexEngine(String name) {
@@ -2899,7 +2891,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
     return engine.hasRangeQuerySupport();
   }
 
-  private void makeRollback(OTransaction clientTx, Exception e) {
+  private void makeRollback(OTransactionInternal clientTx, Exception e) {
     // WE NEED TO CALL ROLLBACK HERE, IN THE LOCK
     OLogManager.instance()
         .debug(this, "Error during transaction commit, transaction will be rolled back (tx-id=%d)", e, clientTx.getId());
@@ -2924,7 +2916,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
   }
 
   @Override
-  public void rollback(final OTransaction clientTx) {
+  public void rollback(final OTransactionInternal clientTx) {
     try {
       checkOpenness();
       stateLock.acquireReadLock();
@@ -2945,7 +2937,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
           makeStorageDirty();
           rollbackStorageTx();
 
-          OTransactionAbstract.updateCacheFromEntries(clientTx, clientTx.getAllRecordEntries(), false);
+          OTransactionAbstract.updateCacheFromEntries(clientTx.getDatabase(), clientTx.getRecordOperations(), false);
 
           txRollback.incrementAndGet();
 
@@ -3896,7 +3888,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
     return lsn;
   }
 
-  private void startStorageTx(OTransaction clientTx) throws IOException {
+  private void startStorageTx(OTransactionInternal clientTx) throws IOException {
     final OStorageTransaction storageTx = transaction.get();
     if (storageTx != null && storageTx.getClientTx().getId() != clientTx.getId())
       rollback(clientTx);
