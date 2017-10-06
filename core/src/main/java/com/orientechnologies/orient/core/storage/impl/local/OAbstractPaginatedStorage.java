@@ -1463,7 +1463,7 @@ public abstract class OAbstractPaginatedStorage extends OStorageAbstract
    *
    * @param clientTx the transaction of witch allocate rids
    */
-  public void preallocateRids(final OTransaction clientTx) {
+  public void preallocateRids(final OTransactionInternal clientTx) {
     try {
       checkOpenness();
       checkLowDiskSpaceRequestsAndBackgroundDataFlushExceptionsAndBrokenPages();

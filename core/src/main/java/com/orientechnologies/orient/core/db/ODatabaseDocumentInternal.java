@@ -41,6 +41,7 @@ import com.orientechnologies.orient.core.sql.parser.OLocalResultSetLifecycleDeco
 import com.orientechnologies.orient.core.storage.ORecordCallback;
 import com.orientechnologies.orient.core.storage.OStorage;
 import com.orientechnologies.orient.core.tx.OTransaction;
+import com.orientechnologies.orient.core.tx.OTransactionInternal;
 import com.orientechnologies.orient.core.tx.OTransactionOptimistic;
 
 import java.util.Map;
@@ -203,5 +204,5 @@ public interface ODatabaseDocumentInternal extends ODatabaseSession, ODatabaseIn
    *
    * @param transaction
    */
-  void internalCommit(OTransactionOptimistic transaction);
+  void internalCommit(OTransactionInternal transaction);
 }

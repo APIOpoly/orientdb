@@ -73,10 +73,7 @@ import com.orientechnologies.orient.core.storage.impl.local.OFreezableStorageCom
 import com.orientechnologies.orient.core.storage.impl.local.OMicroTransaction;
 import com.orientechnologies.orient.core.storage.impl.local.paginated.OOfflineClusterException;
 import com.orientechnologies.orient.core.storage.impl.local.paginated.ORecordSerializationContext;
-import com.orientechnologies.orient.core.tx.OTransaction;
-import com.orientechnologies.orient.core.tx.OTransactionAbstract;
-import com.orientechnologies.orient.core.tx.OTransactionNoTx;
-import com.orientechnologies.orient.core.tx.OTransactionOptimistic;
+import com.orientechnologies.orient.core.tx.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -3142,7 +3139,7 @@ public abstract class ODatabaseDocumentAbstract extends OListenerManger<ODatabas
   }
 
   @Override
-  public void internalCommit(OTransactionOptimistic transaction) {
+  public void internalCommit(OTransactionInternal transaction) {
     this.getStorage().commit(transaction, null);
   }
 }
